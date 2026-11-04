@@ -525,4 +525,4 @@ function step(dt, t, draw = true) {
   if (DEBUG) { ui.show('title', false); startNight(Math.min(parseInt(params.get('night') || '0', 10), 4)); }
   requestAnimationFrame(frame);
 })();
-if (DEBUG) window.__g = { audio, cluster, traps, breakers, placeTrap, useBreaker, playIntro, pickups, spawnPickup, endEndless, step, G, ctx, world, player, camera, get sams() { return sams; }, startNight, endNight, nav, hasModel };
+if (DEBUG) window.__g = { renderer, fxPass, scene, audio, cluster, traps, breakers, placeTrap, useBreaker, playIntro, pickups, spawnPickup, endEndless, step, G, ctx, world, player, camera, get sams() { return sams; }, startNight, endNight, nav, hasModel };

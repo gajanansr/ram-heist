@@ -45,10 +45,10 @@ export const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeig
 composer.addPass(bloom);
 
 export const fxPass = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, alert: { value: 0 }, caught: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, alert: { value: 0 }, caught: { value: 0 }, grain: { value: 0.03 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
   fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float time; uniform float alert; uniform float caught; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float time; uniform float alert; uniform float caught; uniform float grain; varying vec2 vUv;
     float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
     void main(){
       vec2 c = vUv-.5; float d = dot(c,c);
@@ -56,7 +56,7 @@ export const fxPass = new ShaderPass({
       vec3 col = vec3(texture2D(tDiffuse,vUv+off).r, texture2D(tDiffuse,vUv).g, texture2D(tDiffuse,vUv-off).b);
       col = mix(col, vec3(dot(col, vec3(.3,.59,.11))), caught*0.6);
       col *= 1.0 - smoothstep(0.1,0.6,d)*0.78;
-      col += (h(vUv*vec2(1920.,1080.)+time)-.5)*0.03;
+      col += (h(vUv*vec2(1920.,1080.)+time)-.5)*grain;
       col += vec3(1.,.05,.1)*alert*0.14*smoothstep(0.04,0.5,d);
       gl_FragColor = vec4(col,1.);
     }`,
