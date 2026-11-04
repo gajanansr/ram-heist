@@ -12,6 +12,8 @@ import { NIGHTS, UPGRADES, ENDLESS, defaultSave, loadSave, writeSave, loadBest, 
 import { inject, track } from '@vercel/analytics';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { INTROS, ENDING, TIPS, NIGHT_TIPS, FAIL_LINES } from './dialogue.js';
+import { IS_TOUCH } from './device.js';
+import { initTouch } from './touch.js';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -31,6 +33,12 @@ const nav = new NavGrid(world.bounds, world.obstacles, 0.5, 0.5);
 const player = new Player(controls, world, scene);
 player.onStep = () => { if (player.hiddenIn) return; audio.sfx(player.crouching ? 'footstep_crouch' : player.sprinting ? 'footstep_run' : 'footstep_walk', { vol: player.crouching ? 0.45 : player.sprinting ? 0.9 : 0.7 }); };
 player.nav = nav;
+// Touch devices have no pointer lock: fake it (lock = 'playing', unlock = 'paused') and add the on-screen controls.
+const touch = initTouch({ player, onPause: () => controls.unlock(), onGrabTap: () => { if (G.grab) mash(); } });
+if (IS_TOUCH) {
+  controls.lock = () => { if (controls.isLocked) return; controls.isLocked = true; controls.dispatchEvent({ type: 'lock' }); };
+  controls.unlock = () => { if (!controls.isLocked) return; controls.isLocked = false; touch.releaseAll(); controls.dispatchEvent({ type: 'unlock' }); };
+}
 const HIDEABLE = new Set(['Locker', 'Couch', 'Desk', 'Crate', 'Supply Cabinet', 'Fridge']);
 
 // RAM stick viewmodel
@@ -387,11 +395,11 @@ function briefing(start = false) {
     b.innerHTML = `<h4>The story</h4><p>You are Aj, an ordinary person with a bag of RAM chips. Sam has announced that RAM belongs in datacenters for AI, not in the hands of regular people, and his crew is raiding the hackerspace server room to collect every chip. Ravi from IT guides you by walkie-talkie.</p>
       <h4>Your goal</h4><p>Build the People's Cluster. Carry chips to the glowing terminal in the north-west corner and hold <kbd>E</kbd> to upload them. Upload enough before sunrise and the night is won. Sam steals any chip he finds, so hide them while you move around.</p>
       <h4>How to play</h4><ol>
-      <li>Walk (<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys) to a green <b>HIDE HERE</b> marker and press <kbd>E</kbd> to hide a chip. A hologram shows where yours are. Only you can see it.</li>
-      <li>Click the game once to capture the mouse, then move it to look around. Press <kbd>Esc</kbd> to release it.</li>
-      <li>You can hide too. Stand next to a locker, desk, crate, couch, cabinet or fridge and press <kbd>H</kbd>. Sam can't see you inside, but if he watches you duck in, or searches that spot, he finds you.</li>
+      <li>Walk (${IS_TOUCH ? 'drag your thumb on the left side of the screen' : '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys'}) to a green <b>HIDE HERE</b> marker and ${IS_TOUCH ? 'tap' : 'press'} <kbd>E</kbd> to hide a chip. A hologram shows where yours are. Only you can see it.</li>
+      <li>${IS_TOUCH ? 'Drag on the right side of the screen to look around.' : 'Click the game once to capture the mouse, then move it to look around. Press <kbd>Esc</kbd> to release it.'}</li>
+      <li>You can hide too. Stand next to a locker, desk, crate, couch, cabinet or fridge and ${IS_TOUCH ? 'tap' : 'press'} <kbd>H</kbd>. Sam can't see you inside, but if he watches you duck in, or searches that spot, he finds you.</li>
       <li>Stay out of Sam's flashlight. The ring in the middle of the screen fills when he notices you. The minimap shows him when he is close.</li>
-      <li><kbd>Shift</kbd> sprint (loud) <kbd>C</kbd> crouch (quiet) <kbd>G</kbd> throw a decoy to lure him away <kbd>F</kbd> flashlight.</li>
+      <li>${IS_TOUCH ? '<kbd>RUN</kbd>' : '<kbd>Shift</kbd>'} sprint (loud) <kbd>C</kbd> crouch (quiet) <kbd>G</kbd> throw a decoy to lure him away <kbd>F</kbd> flashlight.</li>
       <li>Fight back: <kbd>T</kbd> drops a coffee spill, and Sam slips for 5 seconds. Pull a breaker (<kbd>E</kbd> at a blue box) to cut the power. Sam can barely see and goes to check it.</li>
       <li>Lose too many chips, get caught three times, or miss sunrise and the night is lost.</li></ol>`;
     ui.panel({ title: start ? 'Mission briefing' : 'Story and how to play', sub: '', body: b, buttons: [{ label: start ? 'Start Night 1' : 'Back', fn: () => { if (!start) { ui.hidePanel(); ui.show('title', true); } resolve(); } }] });
@@ -444,7 +452,7 @@ function setupMenuSam() { ctx.player = fakePlayer; spawnSams([{ name: 'Sam', spe
 
 controls.addEventListener('lock', () => { ui.hidePanel(); });
 controls.addEventListener('unlock', () => {
-  if (G.mode === 'play') { const b = document.createElement('div'); b.className = 'story'; b.innerHTML = '<ol><li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys move, <kbd>Mouse</kbd> looks around, <kbd>Esc</kbd> releases it</li><li><kbd>E</kbd> hide a chip (hold at the cluster to upload), <kbd>H</kbd> hide yourself, <kbd>G</kbd> decoy, <kbd>T</kbd> coffee trap</li><li><kbd>Shift</kbd> sprint, <kbd>C</kbd> crouch, <kbd>F</kbd> flashlight, <kbd>Tab</kbd> first-person</li></ol>'; ui.panel({ title: 'Paused', sub: '', body: b, buttons: [{ label: 'Resume', fn: () => { controls.lock(); } }, { label: 'Quit to main menu', sec: true, fn: toTitle }] }); }
+  if (G.mode === 'play') { const b = document.createElement('div'); b.className = 'story'; b.innerHTML = IS_TOUCH ? '<ol><li>Drag on the left to move, drag on the right to look</li><li><kbd>E</kbd> hide a chip (hold at the cluster to upload), <kbd>H</kbd> hide yourself, <kbd>G</kbd> decoy, <kbd>T</kbd> coffee trap</li><li><kbd>RUN</kbd> sprint (stops when you let go of the stick), <kbd>C</kbd> crouch, <kbd>F</kbd> flashlight</li></ol>' : '<ol><li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys move, <kbd>Mouse</kbd> looks around, <kbd>Esc</kbd> releases it</li><li><kbd>E</kbd> hide a chip (hold at the cluster to upload), <kbd>H</kbd> hide yourself, <kbd>G</kbd> decoy, <kbd>T</kbd> coffee trap</li><li><kbd>Shift</kbd> sprint, <kbd>C</kbd> crouch, <kbd>F</kbd> flashlight, <kbd>Tab</kbd> first-person</li></ol>'; ui.panel({ title: 'Paused', sub: '', body: b, buttons: [{ label: 'Resume', fn: () => { controls.lock(); } }, { label: 'Quit to main menu', sec: true, fn: toTitle }] }); }
 });
 document.addEventListener('pointerlockerror', () => { if (G.mode === 'play') ui.panel({ title: 'Click to continue', sub: 'The browser needs a click to capture the mouse.', buttons: [{ label: 'Continue', fn: () => controls.lock() }] }); });
 
@@ -461,6 +469,7 @@ $('bMusic').onclick = () => { audio.init(); const on = !audio.isMusicOn(); audio
 
 // ───────────────────────── main loop ─────────────────────────
 const _dir = new THREE.Vector3();
+let wasLive = false;
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
@@ -469,6 +478,7 @@ function frame(now) {
 function step(dt, t, draw = true) {
   fxPass.uniforms.time.value = t % 100; world.update(t, dt); audio.tick(dt); { camera.getWorldDirection(_dir); audio.setListener(camera.position.x, camera.position.z, _dir.x, _dir.z); }
   const live = G.mode === 'play' && (controls.isLocked || DEBUG);
+  if (live !== wasLive) { wasLive = live; touch.setPlaying(live); }
 
   if (live && G.grab) {
     updateGrab(dt, t); for (const s of sams) s.update(dt, t); audio.setTension(1); world.alert += (1 - world.alert) * Math.min(1, dt * 3); G.shake = Math.max(0, G.shake - dt * 1.2);
@@ -498,6 +508,7 @@ function step(dt, t, draw = true) {
     for (const sp of world.spots) { const near = sp === s; sp.ring.material.opacity += ((near ? 0.85 : 0) - sp.ring.material.opacity) * Math.min(1, dt * 10); }
     const N = G.cfg, hidden = world.stashTotal();
     ui.hud({ uploaded: G.uploaded, traps: G.traps, endless: G.endless, score: Math.floor(G.score), timeMax: N.time, elapsed, title: N.title, sub: N.sub, need: N.need, total: G.total, time: G.time, carry: G.carry, hidden, stolen: G.stolen, strikes: G.strikes, stamina: player.stamina, exhausted: player.exhausted, noise: player.noise, decoys: G.decoys, flash: player.flashOn, prompt, aware, alert: world.alert });
+    touch.sync({ crouch: player.crouching, flash: player.flashOn, hiding: !!player.hiddenIn, decoys: G.decoys, traps: G.traps });
     ui.minimap({ world, sams, player, marks: [...(G.endless ? [] : [{ x: cluster.pos.x, z: cluster.pos.z, c: '#ffd24d' }]), ...breakers.map((b) => ({ x: b.pos.x, z: b.pos.z, c: '#62c8ff' })), ...traps.map((t) => ({ x: t.pos.x, z: t.pos.z, c: '#c47a3a' }))], pickups: pickups.map((p) => p.pos), yaw: player.facing + Math.PI });
     const left = G.carry + hidden + G.uploaded;
     if (G.endless) { if (G.strikes >= 3) endEndless('Caught three times.'); else if (left <= 0) endEndless('Sam took your last chip.'); }
@@ -515,6 +526,18 @@ function step(dt, t, draw = true) {
 }
 
 // ───────────────────────── boot ─────────────────────────
+if (IS_TOUCH) {
+  setQuality('low'); $('bQual').textContent = 'Graphics: Low'; // phones start on the light preset
+  $('struggle').querySelector('span').innerHTML = 'Tap <kbd>E</kbd> fast'; document.querySelector('#cutBox .hint').textContent = 'Tap to continue';
+  // go fullscreen on the first tap where the browser allows it (Android); iOS Safari ignores this, so use Add to Home Screen there
+  const fs = () => { removeEventListener('click', fs); const d = document.documentElement; try { d.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')?.catch(() => { })).catch(() => { }); } catch { } };
+  addEventListener('click', fs);
+  // leaving the app pauses the game
+  const autoPause = () => { if (G.mode === 'play' && controls.isLocked) controls.unlock(); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
+  // iOS only starts audio from touchend/click
+  addEventListener('touchend', () => audio.init(), { passive: true });
+}
 (async () => {
   $('title').classList.remove('on');
   const FOOT = 'Parody game. All dialogue is fictional. Not affiliated with any real person or company.';

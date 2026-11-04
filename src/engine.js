@@ -7,10 +7,11 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { IS_TOUCH, view } from './device.js';
 
-export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+export const renderer = new THREE.WebGLRenderer({ antialias: !IS_TOUCH, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(view.w, view.h);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -24,7 +25,7 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.3;
 
-export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 90);
+export const camera = new THREE.PerspectiveCamera(72, view.w / view.h, 0.05, 90);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
 
@@ -32,7 +33,7 @@ export const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 
 export const aoHide = []; // objects hidden while the AO pass renders (volumes, particles, viewmodel)
-export const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+export const gtao = new GTAOPass(scene, camera, view.w, view.h);
 gtao.blendIntensity = 1.0;
 try { gtao.updateGtaoMaterial({ radius: 0.55, distanceExponent: 1.6, thickness: 1.2, scale: 1.1, samples: 12 }); } catch { }
 {
@@ -41,7 +42,7 @@ try { gtao.updateGtaoMaterial({ radius: 0.55, distanceExponent: 1.6, thickness: 
 }
 composer.addPass(gtao);
 
-export const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.5, 0.9);
+export const bloom = new UnrealBloomPass(new THREE.Vector2(view.w, view.h), 0.45, 0.5, 0.9);
 composer.addPass(bloom);
 
 export const fxPass = new ShaderPass({
@@ -67,12 +68,12 @@ composer.addPass(new OutputPass());
 export const quality = { level: 'high' };
 export function setQuality(l) {
   quality.level = l; const hi = l === 'high';
-  gtao.enabled = hi; bloom.strength = hi ? 0.45 : 0.3;
-  renderer.setPixelRatio(hi ? Math.min(devicePixelRatio, 2) : 1);
-  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  gtao.enabled = hi; bloom.strength = hi ? 0.45 : 0.3; bloom.enabled = hi || !IS_TOUCH; // phones: Low skips ambient occlusion and bloom
+  renderer.setPixelRatio(hi ? Math.min(devicePixelRatio, 2) : IS_TOUCH ? Math.min(devicePixelRatio, 1.5) : 1);
+  renderer.setSize(view.w, view.h); composer.setSize(view.w, view.h);
 }
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+addEventListener('viewchange', () => {
+  camera.aspect = view.w / view.h; camera.updateProjectionMatrix();
+  renderer.setSize(view.w, view.h); composer.setSize(view.w, view.h);
 });
 export function render(dt) { composer.render(dt); }

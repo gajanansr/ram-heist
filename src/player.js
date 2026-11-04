@@ -23,9 +23,12 @@ export class Player {
     this.drag = false;
     addEventListener('mousedown', (e) => { if (e.button === 0 || e.button === 2) this.drag = true; }); addEventListener('mouseup', () => { this.drag = false; });
     addEventListener('contextmenu', (e) => { if (this.live) e.preventDefault(); });
-    addEventListener('mousemove', (e) => { if (!this.live) return; if (!this.controls.isLocked && !this.drag) return; this.yaw -= e.movementX * 0.0022; this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * 0.0022, this.hiddenIn ? -0.35 : -0.5, this.hiddenIn ? 0.45 : 1.1); });
+    addEventListener('mousemove', (e) => { if (!this.live) return; if (!this.controls.isLocked && !this.drag) return; this.look(e.movementX * 0.0022, e.movementY * 0.0022); });
+    this.move = { x: 0, y: 0 }; // analog stick from the touch controls: x right, y forward, each -1..1
     addEventListener('wheel', (e) => { this.dist = THREE.MathUtils.clamp(this.dist + Math.sign(e.deltaY) * 0.3, 2.0, 5.0); });
   }
+  // turn the view by radians (mouse and touch both come through here)
+  look(dYaw, dPitch) { if (!this.live) return; this.yaw -= dYaw; this.pitch = THREE.MathUtils.clamp(this.pitch - dPitch, this.hiddenIn ? -0.35 : -0.5, this.hiddenIn ? 0.45 : 1.1); }
   attachModel(gltf) {
     if (!gltf) { this.firstPerson = true; return; }
     this.actor = new Actor(gltf, { height: 1.74 }); this.scene.add(this.actor.root); this.actor.play('idle');
@@ -55,13 +58,14 @@ export class Player {
   update(dt) {
     const k = this.keys;
     let f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0), r = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
+    f += this.move.y; r += this.move.x;
     if (this.hiddenIn) { f = 0; r = 0; }
     this.busy = Math.max(0, this.busy - dt);
     const wantSprint = (k.ShiftLeft || k.ShiftRight) && !this.crouching && (f || r) && !this.exhausted && !this.busy;
     this.sprinting = wantSprint && this.stamina > 0;
     const maxSpeed = this.hiddenIn ? 0 : this.busy ? 0.4 : this.crouching ? CROUCH : this.sprinting ? SPRINT : WALK;
     const fwd = new THREE.Vector2(-Math.sin(this.yaw), -Math.cos(this.yaw)), right = new THREE.Vector2(Math.cos(this.yaw), -Math.sin(this.yaw));
-    const wish = new THREE.Vector2().addScaledVector(fwd, f).addScaledVector(right, r); if (wish.lengthSq() > 0) wish.normalize();
+    const wish = new THREE.Vector2().addScaledVector(fwd, f).addScaledVector(right, r); if (wish.lengthSq() > 1) wish.normalize(); // keyboard diagonals clamp to 1; a half-pushed stick keeps its smaller length
     this.vel.lerp(wish.clone().multiplyScalar(maxSpeed), Math.min(1, dt * (wish.lengthSq() > 0 ? 9 : 10)));
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.y * dt; resolveCircle(this.pos, 0.34, this.world.obstacles, this.world.bounds);
     this.speedNow = this.vel.length();
