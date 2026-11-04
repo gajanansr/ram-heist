@@ -1,0 +1,7 @@
+node_modules
+dist
+.vercel
+.DS_Store
+.playwright-mcp
+# original third-party model sources used only to regenerate the game's .glb files (see README)
+assets-src/

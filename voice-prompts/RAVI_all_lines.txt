@@ -1,0 +1,49 @@
+[relieved, whispering] One chip online. Keep going!
+
+[urgent whisper] One more chip. You are almost there!
+
+[laughing, whispering] Ha! He slipped! Go, go, go!
+
+[excited whisper] Lights out. Move while he can't see!
+
+[wincing, sympathetic] Ouch. Shake it off, Aj.
+
+[overjoyed] The cluster is live! You did it!
+
+[gentle, encouraging] That one is on Sam. Try again, Aj.
+
+[calm, helpful] Walk up to a locker, desk or crate and press E to hide a chip.
+
+[whispers] Hold Shift to sprint, but it is loud. Press C to crouch and stay quiet.
+
+[pointing it out] Watch the circle in the middle of the screen. When it fills up, Sam has spotted you.
+
+[warm, quick] The terminal in the north-west corner is the People's Cluster. Hold E there to upload chips.
+
+[conspiratorial] You can hide yourself too. Stand next to a locker or desk and press H. Just don't let him watch you do it.
+
+[encouraging] Press G to throw a decoy mug. The noise pulls Sam away.
+
+[mischievous] Press T to drop a coffee spill. Lure Sam over it.
+
+[excited whisper] See the blue boxes on the walls? Press E at one and the whole room goes dark.
+
+[anxious] Press F for your flashlight. But the light makes you easy to spot.
+
+[serious, quiet] Sam has better ears tonight. Crouch with C, and think twice before you sprint.
+
+[steady, proud] Last night. Keep going, Aj. You can do it.
+
+[conspiratorial] I got you some decoy mugs. Press G to throw one. The noise pulls him away from your hiding spots.
+
+[dry, tired] Also the lights are flickering. Facilities says it is a feature.
+
+[anxious, whispering] Press F for your flashlight. But be careful. A light in the dark is a very loud thing.
+
+[wary] Sam has been practising. He can hear a chip click from across the room now, Aj.
+
+[urgent, low] If he sees you duck into a hiding spot, he will check it first.
+
+[focused] Eight chips tonight. Use everything you have learned: decoys, traps, and the breakers.
+
+[overjoyed, warm] You did it, Aj! The RAM stays with the people. [laughs] Thanks for playing RAM Heist.

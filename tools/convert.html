@@ -1,0 +1,240 @@
+<!doctype html><meta charset="utf-8"><title>convert</title>
+<style>body{margin:0;background:#111;color:#ccc;font:12px monospace}canvas{display:block}</style>
+<body><script type="module">
+// Aj.fbx (Mixamo "Boy01", no textures, no real animation) -> game-ready GLB with baked colours + generated animation clips.
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+const Q = new URLSearchParams(location.search);
+const GZ = parseFloat(Q.get('gz') || '999');
+const D = Math.PI / 180;
+const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+const log = []; window.__log = log;
+
+const PALETTES = {
+  aj:  { skin: 0xc08a64, hair: 0x15100d, top: 0x1f6f6b, pants: 0x2a3550, shoe: 0xe9e9e9, hat: 0x15100d, brow: 0x15100d, eye: 0x1a1412, mouth: 0x7a3030 },
+  sam: { sam: true, skin: 0xdcaa8a, hair: 0x3b2718, top: 0xe8e8e4, pants: 0x3d6291, shoe: 0xd9d9d6, hat: 0x3b2718, brow: 0x3b2718, eye: 0x1a1412, mouth: 0x8a4040 },
+};
+const c3 = (hex) => new THREE.Color(hex);
+
+async function loadFbx() { return new FBXLoader().loadAsync('/assets-src/Aj.fbx'); }
+
+// ───────── colours baked from skin weights (the FBX has no usable textures)
+function regionOf(name) {
+  if (/Hand|Thumb|Index|Middle|Ring|Pinky/.test(name)) return 'skin';
+  if (/Hat/.test(name)) return 'hat';
+  if (/Hair/.test(name)) return 'hair';
+  if (/Head|Neck/.test(name)) return 'head';
+  if (/Foot|Toe/.test(name)) return 'shoe';
+  if (/UpLeg|Leg|Hips/.test(name)) return 'pants';
+  return 'top';
+}
+
+// remove triangles (non-indexed skinned geometry) matching test(dominantBoneName, centroidWorld)
+function pruneTriangles(m, test) {
+  const g = m.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bones = m.skeleton.bones, n = pos.count / 3, keep = [];
+  const v = new THREE.Vector3(), cen = new THREE.Vector3();
+  const dom = (i) => { let b = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; b = si.getComponent(i, k); } } return bones[b].name.replace('mixamorig', ''); };
+  for (let t = 0; t < n; t++) {
+    cen.set(0, 0, 0); let minZ = 1e9; for (let k = 0; k < 3; k++) { v.fromBufferAttribute(pos, t * 3 + k).applyMatrix4(m.matrixWorld); cen.add(v); minZ = Math.min(minZ, v.z); }
+    cen.multiplyScalar(1 / 3); const maxZ = (() => { let mz = -1e9; for (let k = 0; k < 3; k++) { v.fromBufferAttribute(pos, t * 3 + k).applyMatrix4(m.matrixWorld); mz = Math.max(mz, v.z); } return mz; })();
+    if (!test(dom(t * 3), cen, maxZ)) keep.push(t);
+  }
+  const rebuild = (a) => { const arr = new a.array.constructor(keep.length * 3 * a.itemSize); keep.forEach((t, j) => { for (let k = 0; k < 3 * a.itemSize; k++) arr[j * 3 * a.itemSize + k] = a.array[t * 3 * a.itemSize + k]; }); return new THREE.BufferAttribute(arr, a.itemSize, a.normalized); };
+  for (const name of Object.keys(g.attributes)) g.setAttribute(name, rebuild(g.attributes[name]));
+  for (const key of Object.keys(g.morphAttributes || {})) g.morphAttributes[key] = g.morphAttributes[key].map(rebuild);
+  g.clearGroups(); g.computeBoundingSphere(); g.computeBoundingBox(); log.push({ pruned: n - keep.length, of: n });
+}
+function addCurlyHair(fbx, pal) {
+  const head = fbx.getObjectByName('mixamorigHead'), hp = new THREE.Vector3(); head.getWorldPosition(hp);
+  const tp = new THREE.Vector3(); fbx.getObjectByName('mixamorigHeadTop_End').getWorldPosition(tp);
+  const h = tp.y - hp.y, center = new THREE.Vector3(0, hp.y + h * 0.42, -2), R = h * 0.5;
+  const mat = new THREE.MeshStandardMaterial({ color: pal.hair, roughness: 0.9, metalness: 0 });
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const geo = new THREE.IcosahedronGeometry(1, 1);
+  for (let i = 0; i < 170; i++) {
+    const th = rnd() * Math.PI * 2, ph = Math.acos(1 - rnd() * 0.95); // upper hemisphere bias
+    const d = new THREE.Vector3(Math.sin(ph) * Math.cos(th), Math.cos(ph), Math.sin(ph) * Math.sin(th));
+    if (d.z > 0.55 && d.y < 0.75) continue; // keep the forehead clear
+    if (d.y < 0.12 && d.z > -0.2) continue; // keep ears/sides clear in front
+    const m = new THREE.Mesh(geo, mat); const r = R * (0.16 + rnd() * 0.1);
+    m.position.copy(center).addScaledVector(d, R * (0.98 + rnd() * 0.18)); m.position.y += R * 0.1;
+    m.scale.set(r * (0.9 + rnd() * 0.5), r * (0.8 + rnd() * 0.5), r * (0.9 + rnd() * 0.5)); m.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); m.castShadow = true;
+    head.worldToLocal(m.position); m.scale.divideScalar(1); // head bone has no scale in world terms here
+    head.add(m);
+  }
+}
+
+function colourise(fbx, pal) {
+  fbx.updateMatrixWorld(true);
+  const headB = fbx.getObjectByName('mixamorigHead'), topB = fbx.getObjectByName('mixamorigHeadTop_End');
+  const hp = new THREE.Vector3(), tp = new THREE.Vector3(); headB.getWorldPosition(hp); topB.getWorldPosition(tp);
+  const headH = tp.y - hp.y; log.push({ headY: hp.y, topY: tp.y, headZ: hp.z });
+  const v = new THREE.Vector3();
+  fbx.traverse((m) => {
+    if (!m.isSkinnedMesh) return;
+    const n = m.name;
+    if (n !== 'Boy01_Body_Geo') {
+      const col = /Brows/.test(n) ? pal.brow : /Eyes/.test(n) ? pal.eye : new THREE.Color(pal.skin).multiplyScalar(0.82).getHex();
+      m.material = new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, metalness: 0 }); return;
+    }
+    if (pal.sam) pruneTriangles(m, (bone, cen, maxZ) => /^(Hood1?|Hat|HairA|HairB|[LR]HoodieString[12]?|[LR]Sleeve)$/.test(bone) && bone !== 'RHoodieString2' || (bone === 'Head' && maxZ < hp.z - 11 && cen.y > hp.y + headH * 0.2) || (bone === 'Head' && cen.z < hp.z - 17 && cen.y > hp.y + headH * 0.1) || (bone === 'Head' && cen.z > hp.z + GZ && cen.y > hp.y + headH * 0.05 && cen.y < hp.y + headH * 0.55 && Math.abs(cen.x) > 1.5));
+    const g = m.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bones = m.skeleton.bones;
+    const armP = {}; for (const sd of ['Left', 'Right']) { const a = new THREE.Vector3(), f = new THREE.Vector3(); fbx.getObjectByName(`mixamorig${sd}Arm`).getWorldPosition(a); fbx.getObjectByName(`mixamorig${sd}ForeArm`).getWorldPosition(f); armP[sd] = { a, dir: f.clone().sub(a), len: a.distanceTo(f) }; }
+    const col = new Float32Array(pos.count * 3), tmp = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); // bind pose, world
+      let r = 0, gg = 0, b = 0, wsum = 0;
+      for (let k = 0; k < 4; k++) {
+        const w = sw.getComponent(i, k); if (w <= 0) continue; wsum += w;
+        let reg = regionOf(bones[si.getComponent(i, k)].name);
+        if (reg === 'head') reg = (v.y > hp.y + headH * 0.42 || (v.y > hp.y + headH * 0.12 && v.z < hp.z - headH * 0.12)) ? 'hair' : 'skin';
+        const bn = bones[si.getComponent(i, k)].name;
+        if (pal.sam) {
+          if (/(Left|Right)Arm$/.test(bn)) { const ap = armP[bn.includes('Left') ? 'Left' : 'Right']; const tt = v.clone().sub(ap.a).dot(ap.dir) / (ap.len * ap.len); reg = tt < 0.62 ? 'top' : 'skin'; }
+          else if (/ForeArm$/.test(bn)) reg = 'skin';
+        }
+        if (pal.sam && /Hips|Spine/.test(bn)) reg = v.y > 92 ? 'top' : 'pants';
+        tmp.set(pal[reg]); if (pal.sam && reg === 'pants') tmp.multiplyScalar(0.9 + 0.1 * Math.sin(v.y * 1.7 + v.x * 0.9) + 0.06 * Math.sin(v.y * 6.1)); r += tmp.r * w; gg += tmp.g * w; b += tmp.b * w;
+      }
+      wsum = wsum || 1; col[i * 3] = r / wsum; col[i * 3 + 1] = gg / wsum; col[i * 3 + 2] = b / wsum;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    m.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, metalness: 0 });
+  });
+  if (pal.sam) addCurlyHair(fbx, pal);
+}
+
+// ───────── procedural animation for the Mixamo rig
+const NAMES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg', 'RightLeg', 'RightFoot'];
+function buildRig(fbx) {
+  fbx.updateMatrixWorld(true);
+  const rig = { bones: {}, sL: 1 };
+  for (const n of NAMES) { const b = fbx.getObjectByName('mixamorig' + n); const wq = new THREE.Quaternion(); b.getWorldQuaternion(wq); rig.bones[n] = { b, restLocal: b.quaternion.clone(), restWorldInv: wq.clone().invert(), restWorld: wq, restPos: b.position.clone() }; }
+  const lp = new THREE.Vector3(), rp = new THREE.Vector3(); rig.bones.LeftArm.b.getWorldPosition(lp); rig.bones.RightArm.b.getWorldPosition(rp);
+  rig.sL = lp.x > rp.x ? 1 : -1;
+  const lf = new THREE.Vector3(), toe = new THREE.Vector3(); fbx.getObjectByName('mixamorigLeftFoot').getWorldPosition(lf); const t = fbx.getObjectByName('mixamorigLeftToeBase'); if (t) t.getWorldPosition(toe);
+  rig.facing = toe.z > lf.z ? '+Z' : '-Z'; log.push({ leftSign: rig.sL, facing: rig.facing, hipsPos: rig.bones.Hips.restPos.toArray() });
+  return rig;
+}
+const qa = (axis, ang) => new THREE.Quaternion().setFromAxisAngle(axis, ang);
+// pose: { BoneName: [[axis, angle], ...] } rotations expressed in world axes of the REST pose, applied in listed order
+function applyPose(rig, pose) {
+  const out = {};
+  for (const n of NAMES) {
+    const r = rig.bones[n]; const list = pose[n];
+    if (!list || !list.length) { out[n] = r.restLocal.clone(); continue; }
+    const dw = new THREE.Quaternion(); for (const [ax, an] of list) dw.premultiply(qa(ax, an));
+    const dl = r.restWorldInv.clone().multiply(dw).multiply(r.restWorld); // world delta -> bone-local delta
+    out[n] = r.restLocal.clone().multiply(dl);
+  }
+  return out;
+}
+
+// character-language helpers (all angles in degrees)
+function body(rig, p) {
+  // p: thighF/Lf, kneeL/R, armF L/R, elbowL/R, lean, twist, headYaw, headPitch, hipsDy, hipsDx, sway, hipsRoll
+  const s = rig.sL, pose = {};
+  const add = (n, ax, ang) => { if (!ang) return; (pose[n] ||= []).push([ax, ang * D]); };
+  const g = (k) => p[k] || 0;
+  // legs: forward = -X rotation; knee flex = +X; foot keeps flat
+  for (const [side, tf, kn] of [['Left', g('thighL'), g('kneeL')], ['Right', g('thighR'), g('kneeR')]]) {
+    add(side + 'UpLeg', X, -tf); add(side + 'Leg', X, kn); add(side + 'Foot', X, tf - kn + g('footPitch'));
+    add(side + 'UpLeg', Z, (side === 'Left' ? -1 : 1) * rig.sL * -g('legSpread') * -1);
+  }
+  // arms: lower from T-pose about Z, then swing about X (forward = -X), forearm flex forward = -X
+  for (const [side, sg, af, el, spread] of [['Left', -rig.sL, g('armL'), g('elbowL'), g('spreadL')], ['Right', rig.sL, g('armR'), g('elbowR'), g('spreadR')]]) {
+    const drop = 72 - spread; add(side + 'Arm', Z, sg * drop); add(side + 'Arm', X, -af); add(side + 'ForeArm', X, -el);
+  }
+  add('Spine', X, g('lean') * 0.4); add('Spine1', X, g('lean') * 0.35); add('Spine2', X, g('lean') * 0.25);
+  add('Spine', Y, g('twist') * 0.4); add('Spine1', Y, g('twist') * 0.3); add('Spine2', Y, g('twist') * 0.3);
+  add('Spine1', Z, g('sway')); add('Hips', Y, g('hipsTwist')); add('Hips', Z, g('hipsRoll'));
+  add('Neck', Y, g('headYaw') * 0.4); add('Head', Y, g('headYaw') * 0.6); add('Neck', X, g('headPitch') * 0.4 - g('lean') * 0.3); add('Head', X, g('headPitch') * 0.6 - g('lean') * 0.25);
+  return { pose, hipsDy: g('hipsDy'), hipsDx: g('hipsDx') };
+}
+const s = Math.sin, c = Math.cos, TAU = Math.PI * 2;
+const smooth = (x) => x * x * (3 - 2 * x), clamp01 = (x) => Math.min(1, Math.max(0, x));
+
+const CLIPS = {
+  idle: { dur: 4.8, loop: true, f: (t, T) => { const p = TAU * t / T, w = s(p); return { thighL: 3 + 2 * w, thighR: 3 - 2 * w, kneeL: 4 + 5 * Math.max(0, w), kneeR: 4 + 5 * Math.max(0, -w), hipsRoll: 2.2 * w, hipsDx: 0.6 * w, hipsTwist: 1.5 * s(2 * p), sway: -2.2 * w, hipsDy: -0.4 + 0.3 * s(2 * p), armL: 5 + 2 * s(p + 1), armR: 3 + 2 * s(p), elbowL: 34 + 4 * s(p + 0.5), elbowR: 40 + 4 * s(p + 2), spreadL: 5, spreadR: 5, lean: 1 + 0.7 * s(2 * p), headYaw: 5 * s(p) + 2 * s(2 * p + 1), headPitch: -1 + 1.5 * s(2 * p), twist: 2 * s(p + 1.5) }; } },
+  walk: { dur: 1.1, loop: true, f: (t, T) => { const p = TAU * t / T, A = 26; return {
+    thighL: -A * s(p), thighR: A * s(p), kneeL: 6 + 38 * Math.max(0, -c(p)), kneeR: 6 + 38 * Math.max(0, c(p)),
+    armL: 36 * s(p), armR: -36 * s(p), elbowL: 22 + 22 * (1 + s(p)) / 2, elbowR: 22 + 22 * (1 - s(p)) / 2, lean: 4, twist: -6 * s(p), hipsTwist: 5 * s(p), hipsDy: 1.7 * c(2 * p) - 0.5, hipsDx: 0.9 * s(p), sway: 1.5 * s(p), spreadL: 5, spreadR: 5, headYaw: 2 * s(p), }; } },
+  run: { dur: 0.7, loop: true, f: (t, T) => { const p = TAU * t / T, A = 46; return {
+    thighL: -A * s(p) + 6, thighR: A * s(p) + 6, kneeL: 20 + 85 * Math.max(0, -c(p)), kneeR: 20 + 85 * Math.max(0, c(p)),
+    armL: 58 * s(p), armR: -58 * s(p), elbowL: 90 + 16 * s(p), elbowR: 90 - 16 * s(p), lean: 13, twist: -10 * s(p), hipsTwist: 8 * s(p), hipsDy: 3.2 * c(2 * p) - 1.5, hipsDx: 1.2 * s(p), sway: 2 * s(p), spreadL: 14, spreadR: 14, headPitch: -5, }; } },
+  crouchIdle: { dur: 3.2, loop: true, f: (t, T) => { const p = TAU * t / T; return { thighL: 50, thighR: 50, kneeL: 98, kneeR: 98, lean: 22 + s(p), armL: 18, armR: 18, elbowL: 30, elbowR: 30, hipsDy: -28, headPitch: -12, spreadL: 8, spreadR: 8, footPitch: 0 }; } },
+  crouchWalk: { dur: 1.5, loop: true, f: (t, T) => { const p = TAU * t / T, A = 24; return {
+    thighL: 50 - A * s(p), thighR: 50 + A * s(p), kneeL: 98 + 14 * Math.max(0, -c(p)), kneeR: 98 + 14 * Math.max(0, c(p)),
+    lean: 22, armL: 14 + 18 * s(p), armR: 14 - 18 * s(p), elbowL: 40, elbowR: 40, hipsDy: -28 + 0.8 * c(2 * p), hipsDx: 0.6 * s(p), twist: -4 * s(p), headPitch: -12, spreadL: 8, spreadR: 8, }; } },
+  search: { dur: 2.0, loop: true, f: (t, T) => { const p = TAU * t / T; return { lean: 16 + s(p) * 2, armR: 78 + s(p * 2) * 6, elbowR: 38 + 14 * s(p * 2), armL: 10, elbowL: 20, headPitch: 14, headYaw: 18 * s(p), twist: 8 * s(p), thighL: 4, thighR: 4, hipsDy: -0.8, spreadL: 6, spreadR: 6 }; } },
+  look: { dur: 3.4, loop: true, f: (t, T) => { const p = TAU * t / T; return { lean: 2, headYaw: 48 * s(p), twist: 14 * s(p), armL: 5, armR: 4, elbowL: 34, elbowR: 38, spreadL: 5, spreadR: 5, thighL: 3, thighR: 3, kneeL: 5, kneeR: 5, hipsDy: -0.4 + s(p * 2) * 0.3 }; } },
+  stun: { dur: 0.5, loop: true, f: (t, T) => { const p = TAU * t / T; return { lean: 10 + 3 * s(p * 2), armL: 150, armR: 150, elbowL: 115, elbowR: 115, headYaw: 10 * s(p * 2), headPitch: -8, thighL: -6, thighR: 8, kneeL: 20, kneeR: 12, hipsDy: -3 + s(p * 2) * 0.8, spreadL: -5, spreadR: -5 }; } },
+  throw: { dur: 0.85, loop: false, f: (t, T) => { const u = t / T; const wind = smooth(clamp01(u / 0.4)), rel = smooth(clamp01((u - 0.4) / 0.14)), rec = smooth(clamp01((u - 0.6) / 0.4));
+    const armR = (-70 * wind + 190 * rel) * (1 - rec) + 5 * rec * 0, elbowR = (90 * wind - 70 * rel) * (1 - rec) + 10 * rec;
+    return { armR, elbowR, lean: -6 * wind + 18 * rel * (1 - rec), twist: 14 * wind - 22 * rel * (1 - rec), armL: 18 * wind, elbowL: 30, thighL: 12 * rel * (1 - rec), thighR: -8 * rel * (1 - rec), hipsDy: -1.5 * rel * (1 - rec), spreadL: 6, spreadR: 6 }; } },
+  interact: { dur: 0.8, loop: false, f: (t, T) => { const u = t / T, b = Math.sin(Math.PI * clamp01(u)); return { lean: 20 * b, armR: 70 * b, elbowR: 40 * b + 10, armL: 12 * b, elbowL: 25, headPitch: 10 * b, thighL: 14 * b, thighR: 14 * b, kneeL: 30 * b, kneeR: 30 * b, hipsDy: -6 * b, spreadL: 6, spreadR: 6 }; } },
+};
+
+function makeClips(rig, which = Object.keys(CLIPS)) {
+  const FPS = 30, clips = [];
+  for (const name of which) {
+    const def = CLIPS[name], N = Math.round(def.dur * FPS), times = [], quats = {}, hipsPos = [];
+    for (const n of NAMES) quats[n] = [];
+    const frames = def.loop ? N + 1 : N + 1;
+    for (let i = 0; i < frames; i++) {
+      const t = (i / N) * def.dur, tt = def.loop && i === N ? 0 : t; // exact loop closure
+      const p = def.f(tt, def.dur), { pose, hipsDy, hipsDx } = body(rig, p), q = applyPose(rig, pose);
+      times.push(t); for (const n of NAMES) quats[n].push(...q[n].toArray());
+      const rp = rig.bones.Hips.restPos; hipsPos.push(rp.x + hipsDx, rp.y + hipsDy, rp.z);
+    }
+    const tracks = NAMES.map((n) => new THREE.QuaternionKeyframeTrack(`mixamorig${n}.quaternion`, times, quats[n]));
+    // hips translation: expressed in the hips parent frame (== world axes here, rig root is unrotated)
+    tracks.push(new THREE.VectorKeyframeTrack('mixamorigHips.position', times, hipsPos));
+    const clip = new THREE.AnimationClip(name, def.dur, tracks); clips.push(clip);
+  }
+  return clips;
+}
+
+async function build(variant) {
+  const fbx = await loadFbx(); colourise(fbx, PALETTES[variant]);
+  const rig = buildRig(fbx); const clips = makeClips(rig);
+  fbx.animations = clips; fbx.name = 'Aj_' + variant;
+  return { fbx, rig, clips };
+}
+
+// ───────── preview + export
+async function preview() {
+  const view = Q.get('view') || 'side', variant = Q.get('variant') || 'aj';
+  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x20262d);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6)); const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(2, 4, 3); scene.add(dl);
+  const grid = new THREE.GridHelper(20, 40, 0x445566, 0x2a323a); scene.add(grid);
+  const { fbx, clips } = await build(variant);
+  const names = (Q.get('clips') || 'idle,walk,run,crouchWalk,search,stun,throw,look').split(',');
+  const mixers = [];
+  const sc = 1.78 / 186; // cm -> m
+  names.forEach((nm, i) => {
+    const inst = SkeletonUtils.clone(fbx); inst.scale.setScalar(sc); const off = (i - (names.length - 1) / 2) * 1.25; if (view === 'side') inst.position.set(0, 0, off); else inst.position.set(off, 0, 0); scene.add(inst);
+    const mx = new THREE.AnimationMixer(inst); const clip = clips.find((c) => c.name === nm); const a = mx.clipAction(clip); a.play(); mx.setTime(clip.duration * parseFloat(Q.get('t') || '0.25')); mixers.push(mx);
+  });
+  const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 100);
+  if (view === 'side') cam.position.set(14, 1.5, 0); else if (view === 'front') cam.position.set(0, 1.5, 14); else cam.position.set(9, 2.2, 9);
+  const zoom = parseFloat(Q.get('zoom') || '1'), ly = parseFloat(Q.get('ly') || '0.95'); cam.position.multiplyScalar(zoom); cam.position.y = Math.max(cam.position.y * zoom, ly); cam.lookAt(0, ly, 0); cam.fov = view === 'side' ? 40 : 35; cam.updateProjectionMatrix();
+  // for 3 quarter view widen
+  renderer.render(scene, cam); window.__done = true; document.title = 'preview-done';
+}
+
+async function exportAll() {
+  const out = [];
+  for (const [variant, file] of [['aj', 'aj.glb'], ['sam', 'aj-sam.glb']]) {
+    const { fbx, clips } = await build(variant);
+    const buf = await new Promise((res, rej) => new GLTFExporter().parse(fbx, res, rej, { binary: true, animations: clips, onlyVisible: false, maxTextureSize: 512 }));
+    const r = await fetch('http://localhost:8787/save?name=' + file, { method: 'POST', body: buf }); out.push(file + ' -> ' + (await r.text()));
+  }
+  window.__out = out; document.title = 'export-done';
+}
+if (Q.has('export')) exportAll(); else preview();
+</script></body>

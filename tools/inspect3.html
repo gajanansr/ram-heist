@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>inspect3</title><body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const gltf = await new GLTFLoader().loadAsync('/assets-src/Sam_Altman/Sam_Altman.gltf');
+const root = gltf.scene; root.updateMatrixWorld(true);
+const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+const W = (n) => { const o = root.getObjectByName(n); if (!o) return null; const v = new THREE.Vector3(); o.getWorldPosition(v); return v.toArray().map((x) => +x.toFixed(3)); };
+const bones = []; root.traverse(o => { if (o.isBone) bones.push(o.name); });
+const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push({ n: o.name, skinned: !!o.isSkinnedMesh, mats: [].concat(o.material).map(m => m.name + ':' + (m.map ? 'map' : 'nomap') + (m.transparent ? ':transp' : '') + (m.alphaTest ? ':at' : '')) }); });
+const ws = new THREE.Vector3(); const hips = root.getObjectByName('Hips_01'); hips.parent.getWorldScale(ws);
+const pq = new THREE.Quaternion(); hips.parent.getWorldQuaternion(pq);
+window.__i = { size: size.toArray().map(x => +x.toFixed(3)), min: box.min.toArray().map(x=>+x.toFixed(3)), bones, meshes,
+  hips: W('Hips_01'), lArm: W('LeftArm_013'), lFore: W('LeftForeArm_014'), lHand: W('LeftHand_016') || W('LeftHand_015'), rArm: W('RightArm_0' + 31), head: W('Head_08'), top: W('HeadTop_End_011'), lFoot: W('LeftFoot_0' + 21), lToe: W('LeftToeBase_0' + 22), lEye: W('LeftEye_09'),
+  hipsParentScale: ws.toArray(), hipsParentQuat: pq.toArray().map(x=>+x.toFixed(3)), hipsLocalPos: hips.position.toArray() };
+document.title = 'done';
+</script></body>

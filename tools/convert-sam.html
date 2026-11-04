@@ -1,0 +1,82 @@
+<!doctype html><meta charset="utf-8"><title>convert-sam</title><style>body{margin:0;background:#111}</style>
+<body><script type="module">
+// Sam_Altman.gltf (textured avatar, T-pose, no animation) -> game GLB with straightened rig + generated clips
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { buildRig, makeClips, NAMES } from './anim-lib.js';
+const Q = new URLSearchParams(location.search); const log = (window.__log = []);
+const gltf = await new GLTFLoader().loadAsync('/assets-src/Sam_Altman/Sam_Altman.gltf');
+const root = gltf.scene; root.updateMatrixWorld(true);
+// 0. The avatar has no blendshapes and no jaw bone, so generate face morphs from its geometry.
+//    The teeth meshes tell us where the mouth line is. jawOpen drops the lower face + lower teeth, pucker (oo) and smile (ee) reshape the lips.
+function addFaceMorphs(rootObj) {
+  const by = {}; rootObj.traverse((o) => { if (o.isMesh) { const m = [].concat(o.material)[0]; by[m.name] = o; } });
+  const head = by.AvatarHead, lower = by.AvatarTeethLower, upper = by.AvatarTeethUpper, eyeM = by.AvatarLeftEyeball; if (!head || !lower || !upper || !eyeM) { log.push('face morphs: missing meshes'); return; }
+  const bb = (m) => { m.geometry.computeBoundingBox(); return m.geometry.boundingBox; }; const ub = bb(upper), lb = bb(lower), eb = bb(eyeM);
+  const mouthY = (ub.min.y + lb.max.y) / 2, mouthZ = (ub.min.z + ub.max.z) / 2, eyeY = (eb.min.y + eb.max.y) / 2, eyeZ = (eb.min.z + eb.max.z) / 2, u = eyeY - mouthY;
+  const hp = head.geometry.attributes.position; const chinY = mouthY - 1.0 * u; // chin sits about one eye-to-mouth distance below the lip line
+  const A = 0.15 * u; const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  log.push({ morph: { mouthY, mouthZ, eyeY, eyeZ, u, chinY, A } });
+  const make = (geo, isHead) => {
+    const pos = geo.attributes.position, n = pos.count, jaw = new Float32Array(n * 3), puck = new Float32Array(n * 3), smile = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), dy = y - mouthY;
+      const wz = sm(eyeZ - 1.7 * u, eyeZ - 0.1 * u, z), wx = 1 - 0.55 * sm(1.2 * u, 2.6 * u, Math.abs(x));
+      let w = wz * wx; if (isHead) { w *= Math.min(1, Math.max(0, (mouthY + 0.05 * u - y) / (0.1 * u))) * sm(chinY - 0.55 * u, chinY + 0.12 * u, y); }
+      jaw[i * 3 + 1] = -A * w; jaw[i * 3 + 2] = -0.12 * A * w;
+      if (isHead) {
+        const wm = (1 - sm(0.5 * u, 1.4 * u, Math.hypot(x, dy * 1.2))) * sm(mouthZ - 0.9 * u, mouthZ - 0.1 * u, z);
+        puck[i * 3] = -x * 0.12 * wm; puck[i * 3 + 2] = 0.1 * u * wm;
+        smile[i * 3] = x * 0.07 * wm; smile[i * 3 + 1] = 0.1 * u * wm * sm(0.25 * u, 0.9 * u, Math.abs(x));
+      }
+    }
+    geo.morphAttributes.position = [new THREE.BufferAttribute(jaw, 3), new THREE.BufferAttribute(puck, 3), new THREE.BufferAttribute(smile, 3)]; geo.morphTargetsRelative = true;
+  };
+  for (const [mesh, isHead] of [[head, true], [lower, false]]) { make(mesh.geometry, isHead); mesh.morphTargetDictionary = { jawOpen: 0, pucker: 1, smile: 2 }; mesh.morphTargetInfluences = [0, 0, 0]; }
+  // a dark mouth opening at the lip line (teeth + tongue painted in), skinned to the head bone and driven by the same morph names
+  let lipZ = -1e9; for (let i = 0; i < hp.count; i++) if (Math.abs(hp.getX(i)) < 0.15 * u && Math.abs(hp.getY(i) - mouthY) < 0.12 * u) lipZ = Math.max(lipZ, hp.getZ(i));
+  const W = 0.78 * u, e = 0.0004, planeGeo = new THREE.BufferGeometry();
+  const oy = mouthY, oz = lipZ + 0.0012; planeGeo.setAttribute('position', new THREE.Float32BufferAttribute([-W / 2, oy + e, oz, W / 2, oy + e, oz, -W / 2, oy - e, oz, W / 2, oy - e, oz], 3));
+  planeGeo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3)); planeGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 0, 0, 1, 0], 2)); planeGeo.setIndex([0, 2, 1, 1, 2, 3]);
+  const headBone = head.skeleton.bones.findIndex((b) => /^Head_/.test(b.name)); planeGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(16).fill(0).map((_, i) => (i % 4 === 0 ? headBone : 0)), 4)); planeGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Array(16).fill(0).map((_, i) => (i % 4 === 0 ? 1 : 0)), 4));
+  const op = [0, 0.05 * u, 0, 0, 0.05 * u, 0, 0, -0.34 * u, 0, 0, -0.34 * u, 0], pk = [0.22 * u, -0.02 * u, 0, -0.22 * u, -0.02 * u, 0, 0.22 * u, 0.12 * u, 0, -0.22 * u, 0.12 * u, 0], sl = [-0.04 * u, 0.0, 0, 0.04 * u, 0.0, 0, -0.04 * u, 0.02 * u, 0, 0.04 * u, 0.02 * u, 0];
+  planeGeo.morphAttributes.position = [new THREE.Float32BufferAttribute(op, 3), new THREE.Float32BufferAttribute(pk, 3), new THREE.Float32BufferAttribute(sl, 3)]; planeGeo.morphTargetsRelative = true;
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128; const g2 = cv.getContext('2d'); g2.clearRect(0, 0, 256, 128);
+  g2.save(); g2.beginPath(); g2.ellipse(128, 64, 120, 58, 0, 0, Math.PI * 2); g2.clip(); g2.fillStyle = '#150707'; g2.fillRect(0, 0, 256, 128); g2.fillStyle = '#6e2a2a'; g2.beginPath(); g2.ellipse(128, 118, 78, 36, 0, 0, Math.PI * 2); g2.fill(); g2.fillStyle = '#ece4d6'; g2.fillRect(34, 8, 188, 24); g2.fillStyle = 'rgba(0,0,0,.35)'; for (let i = 1; i < 8; i++) g2.fillRect(34 + i * 23.5, 8, 1.5, 24); g2.restore();
+  const grd = g2.createRadialGradient(128, 64, 40, 128, 64, 122); grd.addColorStop(0.7, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.9)'); g2.globalCompositeOperation = 'destination-out'; g2.fillStyle = grd; g2.beginPath(); g2.ellipse(128, 64, 126, 62, 0, 0, Math.PI * 2); g2.fill();
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false;
+  const hole = new THREE.SkinnedMesh(planeGeo, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide })); hole.name = 'MouthOpening';
+  head.parent.add(hole); hole.updateMatrixWorld(true); hole.bind(head.skeleton, head.bindMatrix);
+  hole.morphTargetDictionary = { jawOpen: 0, pucker: 1, smile: 2 }; hole.morphTargetInfluences = [0, 0, 0]; hole.frustumCulled = false; hole.renderOrder = 3; log.push({ lipZ });
+}
+addFaceMorphs(root);
+// 1. straighten: the skeleton root carries an ~18deg forward tilt. Cancel it so the character stands upright.
+const rj = root.getObjectByName('Skeleton_4_rootJoint'); const pw = new THREE.Quaternion(); rj.parent.getWorldQuaternion(pw);
+rj.quaternion.copy(pw.invert()); root.updateMatrixWorld(true);
+// 2. scale to 1.78m, feet on y=0, centred (applied on a wrapper-free root so exported nodes carry it)
+let b = new THREE.Box3().setFromObject(root); const k = 1.78 / (b.max.y - b.min.y); log.push({ rawHeight: b.max.y - b.min.y, k });
+const holder = new THREE.Group(); holder.name = 'Sam'; holder.add(root); holder.scale.setScalar(k); holder.updateMatrixWorld(true);
+b = new THREE.Box3().setFromObject(holder); const c = b.getCenter(new THREE.Vector3()); root.position.sub(new THREE.Vector3(c.x, b.min.y, c.z).divideScalar(k)); holder.updateMatrixWorld(true);
+// 3. rig + clips
+const find = (n) => { let r = null; const re = new RegExp('^' + n + '_\\d+$'); root.traverse((o) => { if (!r && o.isBone && re.test(o.name)) r = o; }); return r; };
+const rig = buildRig(holder, find, 1.78); log.push(rig.log);
+const clips = makeClips(rig);
+async function preview() {
+  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(innerWidth, innerHeight); document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x20262d); scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 2.2)); const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(2, 4, 3); scene.add(dl); scene.add(new THREE.GridHelper(20, 40, 0x445566, 0x2a323a));
+  const names = (Q.get('clips') || 'idle,talkA,talkB,talkC,search,stun,throw,look').split(','); const view = Q.get('view') || 'side';
+  names.forEach((nm, i) => { const inst = SkeletonUtils.clone(holder); const off = (i - (names.length - 1) / 2) * 1.25; if (view === 'side') inst.position.set(0, 0, off); else inst.position.set(off, 0, 0); scene.add(inst);
+    const mx = new THREE.AnimationMixer(inst); const clip = clips.find((x) => x.name === nm); mx.clipAction(clip).play(); mx.setTime(clip.duration * parseFloat(Q.get('t') || '0.25')); inst.traverse((o) => { if (o.isMesh && o.morphTargetDictionary?.jawOpen !== undefined) { o.morphTargetInfluences[0] = parseFloat(Q.get('jaw') || '0'); o.morphTargetInfluences[1] = parseFloat(Q.get('pucker') || '0'); o.morphTargetInfluences[2] = parseFloat(Q.get('smile') || '0'); } }); });
+  const cam = new THREE.PerspectiveCamera(view === 'side' ? 40 : 35, innerWidth / innerHeight, 0.1, 100);
+  const zoom = parseFloat(Q.get('zoom') || '1'), ly = parseFloat(Q.get('ly') || '0.95'); const base = view === 'side' ? [14, 1.5, 0] : view === 'front' ? [0, 1.5, 14] : [9, 2.2, 9];
+  cam.position.set(base[0] * zoom, Math.max(base[1] * zoom, ly), base[2] * zoom); cam.lookAt(0, ly, 0); if (Q.get('fov')) { cam.fov = parseFloat(Q.get('fov')); cam.updateProjectionMatrix(); } renderer.render(scene, cam); window.__done = true; document.title = 'preview-done';
+}
+async function exportIt() {
+  holder.animations = clips;
+  const buf = await new Promise((res, rej) => new GLTFExporter().parse(holder, res, rej, { binary: true, animations: clips, onlyVisible: false, maxTextureSize: 1024 }));
+  const r = await fetch('http://localhost:8787/save?name=sam.glb', { method: 'POST', body: buf }); window.__out = (await r.text()); document.title = 'export-done';
+}
+if (Q.has('export')) exportIt(); else preview();
+</script></body>

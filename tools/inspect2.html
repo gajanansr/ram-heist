@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>inspect2</title><body><script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+const fbx = await new FBXLoader().loadAsync('/assets-src/Aj.fbx');
+const path = (o) => { const p = []; while (o && o !== fbx) { p.push(o.name || o.type); o = o.parent; } return p.reverse().join('>'); };
+const count = {}; const all = [];
+fbx.traverse(o => { if (o.isBone) { count[o.name] = (count[o.name] || 0) + 1; all.push({ n: o.name, id: o.id, path: path(o) }); } });
+const dups = Object.entries(count).filter(([, c]) => c > 1).map(([n, c]) => n + ' x' + c);
+const dupPaths = all.filter(b => count[b.n] > 1 && /Neck|HeadTop|HairA/.test(b.n)).map(b => b.id + ' ' + b.path);
+const skel = []; fbx.traverse(o => { if (o.isSkinnedMesh) skel.push({ mesh: o.name, bones: o.skeleton.bones.length, first: o.skeleton.bones[0].id, headId: o.skeleton.bones.find(b => /Head$/.test(b.name))?.id, parent: path(o) }); });
+const top = fbx.children.map(c => c.name + ':' + c.type);
+window.__info = { dups, dupPaths, skel, top, uniq: Object.keys(count).length };
+document.title = 'done';
+</script></body>

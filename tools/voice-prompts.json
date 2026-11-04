@@ -1,0 +1,378 @@
+[
+ {
+  "id": "sam_slip_1",
+  "who": "sam",
+  "text": "Whoa!",
+  "tagged": "[yelping, startled] Whoa!",
+  "where": "Sam slips on a coffee trap",
+  "priority": "A"
+ },
+ {
+  "id": "sam_slip_2",
+  "who": "sam",
+  "text": "Who left coffee on the floor?!",
+  "tagged": "[indignant, from the floor] Who left coffee on the floor?!",
+  "where": "Sam slips",
+  "priority": "A"
+ },
+ {
+  "id": "sam_slip_3",
+  "who": "sam",
+  "text": "My roadmap! Oh. My back.",
+  "tagged": "[groaning, pained] My roadmap! ... Oh. My back.",
+  "where": "Sam slips",
+  "priority": "A"
+ },
+ {
+  "id": "sam_suspect_1",
+  "who": "sam",
+  "text": "I saw someone duck in there.",
+  "tagged": "[low, intrigued] I saw someone duck in there.",
+  "where": "Sam saw you hide",
+  "priority": "A"
+ },
+ {
+  "id": "sam_suspect_2",
+  "who": "sam",
+  "text": "That hiding spot looks suspicious.",
+  "tagged": "[suspicious, quietly] That hiding spot looks suspicious.",
+  "where": "Sam saw you hide",
+  "priority": "A"
+ },
+ {
+  "id": "sam_suspect_3",
+  "who": "sam",
+  "text": "Nobody just vanishes. I will check there.",
+  "tagged": "[thoughtful, deliberate] Nobody just vanishes. I will check there.",
+  "where": "Sam saw you hide",
+  "priority": "A"
+ },
+ {
+  "id": "sam_lost_1",
+  "who": "sam",
+  "text": "Where did they go?",
+  "tagged": "[puzzled] Where did they go?",
+  "where": "Sam lost you in a chase",
+  "priority": "A"
+ },
+ {
+  "id": "sam_lost_2",
+  "who": "sam",
+  "text": "Huh. Gone, like a startup in a down round.",
+  "tagged": "[dry, amused] Huh. Gone, like a startup in a down round.",
+  "where": "Sam lost you",
+  "priority": "A"
+ },
+ {
+  "id": "sam_frustrated_1",
+  "who": "sam",
+  "text": "I haven't slept in three days for this RAM.",
+  "tagged": "[tired, exasperated] I haven't slept in three days for this RAM.",
+  "where": "Sam is frustrated after several misses",
+  "priority": "A"
+ },
+ {
+  "id": "sam_frustrated_2",
+  "who": "sam",
+  "text": "I'm not angry. I'm just aggressively optimistic.",
+  "tagged": "[forced calm, strained smile] I'm not angry. I'm just aggressively optimistic.",
+  "where": "Sam is frustrated",
+  "priority": "A"
+ },
+ {
+  "id": "sam_found_1",
+  "who": "sam",
+  "text": "Found you. Hello, Aj.",
+  "tagged": "[delighted, smug] Found you. [chuckles] Hello, Aj.",
+  "where": "Sam finds you hiding",
+  "priority": "A"
+ },
+ {
+  "id": "sam_breaker_1",
+  "who": "sam",
+  "text": "Who turned off the lights?!",
+  "tagged": "[irritated, shouting] Who turned off the lights?!",
+  "where": "You cut the power",
+  "priority": "A"
+ },
+ {
+  "id": "sam_breaker_2",
+  "who": "sam",
+  "text": "Power cut. Convenient. Very convenient.",
+  "tagged": "[calm, then suspicious] Power cut. [pause] Convenient. Very convenient.",
+  "where": "You cut the power",
+  "priority": "A"
+ },
+ {
+  "id": "sam_cluster_1",
+  "who": "sam",
+  "text": "Wait... is that a cluster? In a hackerspace?",
+  "tagged": "[curious, hushed] Wait... is that a cluster? [pause] In a hackerspace?",
+  "where": "Sam hears an upload",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_upload_1",
+  "who": "ravi",
+  "text": "One chip online. Keep going!",
+  "tagged": "[relieved, whispering] One chip online. Keep going!",
+  "where": "First upload each night",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_upload_last",
+  "who": "ravi",
+  "text": "One more chip. You are almost there!",
+  "tagged": "[urgent whisper] One more chip. You are almost there!",
+  "where": "One upload left",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_trap",
+  "who": "ravi",
+  "text": "Ha! He slipped! Go, go, go!",
+  "tagged": "[laughing, whispering] Ha! He slipped! Go, go, go!",
+  "where": "Sam slips",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_breaker",
+  "who": "ravi",
+  "text": "Lights out. Move while he can't see!",
+  "tagged": "[excited whisper] Lights out. Move while he can't see!",
+  "where": "You cut the power",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_caught",
+  "who": "ravi",
+  "text": "Ouch. Shake it off, Aj.",
+  "tagged": "[wincing, sympathetic] Ouch. Shake it off, Aj.",
+  "where": "You get caught",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_win",
+  "who": "ravi",
+  "text": "The cluster is live! You did it!",
+  "tagged": "[overjoyed] The cluster is live! You did it!",
+  "where": "Night won",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_lose",
+  "who": "ravi",
+  "text": "That one is on Sam. Try again, Aj.",
+  "tagged": "[gentle, encouraging] That one is on Sam. Try again, Aj.",
+  "where": "Night lost",
+  "priority": "A"
+ },
+ {
+  "id": "ravi_tip_1",
+  "who": "ravi",
+  "text": "Walk up to a locker, desk or crate and press E to hide a chip.",
+  "tagged": "[calm, helpful] Walk up to a locker, desk or crate and press E to hide a chip.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_2",
+  "who": "ravi",
+  "text": "Hold Shift to sprint, but it is loud. Press C to crouch and stay quiet.",
+  "tagged": "[whispers] Hold Shift to sprint, but it is loud. Press C to crouch and stay quiet.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_3",
+  "who": "ravi",
+  "text": "Watch the circle in the middle of the screen. When it fills up, Sam has spotted you.",
+  "tagged": "[pointing it out] Watch the circle in the middle of the screen. When it fills up, Sam has spotted you.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_4",
+  "who": "ravi",
+  "text": "The terminal in the north-west corner is the People's Cluster. Hold E there to upload chips.",
+  "tagged": "[warm, quick] The terminal in the north-west corner is the People's Cluster. Hold E there to upload chips.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_5",
+  "who": "ravi",
+  "text": "You can hide yourself too. Stand next to a locker or desk and press H. Just don't let him watch you do it.",
+  "tagged": "[conspiratorial] You can hide yourself too. Stand next to a locker or desk and press H. Just don't let him watch you do it.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_6",
+  "who": "ravi",
+  "text": "Press G to throw a decoy mug. The noise pulls Sam away.",
+  "tagged": "[encouraging] Press G to throw a decoy mug. The noise pulls Sam away.",
+  "where": "Tip, night 2",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_7",
+  "who": "ravi",
+  "text": "Press T to drop a coffee spill. Lure Sam over it.",
+  "tagged": "[mischievous] Press T to drop a coffee spill. Lure Sam over it.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_8",
+  "who": "ravi",
+  "text": "See the blue boxes on the walls? Press E at one and the whole room goes dark.",
+  "tagged": "[excited whisper] See the blue boxes on the walls? Press E at one and the whole room goes dark.",
+  "where": "Tip, night 1",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_9",
+  "who": "ravi",
+  "text": "Press F for your flashlight. But the light makes you easy to spot.",
+  "tagged": "[anxious] Press F for your flashlight. But the light makes you easy to spot.",
+  "where": "Tip, night 3",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_10",
+  "who": "ravi",
+  "text": "Sam has better ears tonight. Crouch with C, and think twice before you sprint.",
+  "tagged": "[serious, quiet] Sam has better ears tonight. Crouch with C, and think twice before you sprint.",
+  "where": "Tip, night 4",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_tip_11",
+  "who": "ravi",
+  "text": "Last night. Keep going, Aj. You can do it.",
+  "tagged": "[steady, proud] Last night. Keep going, Aj. You can do it.",
+  "where": "Tip, night 5",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_n2_2",
+  "who": "ravi",
+  "text": "I got you some decoy mugs. Press G to throw one. The noise pulls him away from your hiding spots.",
+  "tagged": "[conspiratorial] I got you some decoy mugs. Press G to throw one. The noise pulls him away from your hiding spots.",
+  "where": "Night 2 intro",
+  "priority": "B"
+ },
+ {
+  "id": "sam_n2",
+  "who": "sam",
+  "text": "I'm not angry about last night. I'm just very motivated.",
+  "tagged": "[smooth, tight smile] I'm not angry about last night. I'm just very motivated.",
+  "where": "Night 2 intro",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_n2_3",
+  "who": "ravi",
+  "text": "Also the lights are flickering. Facilities says it is a feature.",
+  "tagged": "[dry, tired] Also the lights are flickering. Facilities says it is a feature.",
+  "where": "Night 2 intro",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_n3_2",
+  "who": "ravi",
+  "text": "Press F for your flashlight. But be careful. A light in the dark is a very loud thing.",
+  "tagged": "[anxious, whispering] Press F for your flashlight. But be careful. A light in the dark is a very loud thing.",
+  "where": "Night 3 intro",
+  "priority": "B"
+ },
+ {
+  "id": "sam_n3",
+  "who": "sam",
+  "text": "Don't worry about the blackout, everyone. A true visionary can find RAM in the dark.",
+  "tagged": "[confident, grand] Don't worry about the blackout, everyone. [smug] A true visionary can find RAM in the dark.",
+  "where": "Night 3 intro",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_n4_1",
+  "who": "ravi",
+  "text": "Sam has been practising. He can hear a chip click from across the room now, Aj.",
+  "tagged": "[wary] Sam has been practising. He can hear a chip click from across the room now, Aj.",
+  "where": "Night 4 intro",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_n4_2",
+  "who": "ravi",
+  "text": "If he sees you duck into a hiding spot, he will check it first.",
+  "tagged": "[urgent, low] If he sees you duck into a hiding spot, he will check it first.",
+  "where": "Night 4 intro",
+  "priority": "B"
+ },
+ {
+  "id": "sam_n4",
+  "who": "sam",
+  "text": "I trained for this. Months of listening exercises. My roadmap depends on your RAM.",
+  "tagged": "[proud, deadly serious] I trained for this. [pause] Months of listening exercises. My roadmap depends on your RAM.",
+  "where": "Night 4 intro",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_n5_2",
+  "who": "ravi",
+  "text": "Eight chips tonight. Use everything you have learned: decoys, traps, and the breakers.",
+  "tagged": "[focused] Eight chips tonight. Use everything you have learned: decoys, traps, and the breakers.",
+  "where": "Night 5 intro",
+  "priority": "B"
+ },
+ {
+  "id": "sam_n5",
+  "who": "sam",
+  "text": "Tonight we ship. Tonight the datacenter gets its RAM. Tonight nobody sleeps.",
+  "tagged": "[intense, building] Tonight we ship. Tonight the datacenter gets its RAM. [pause] Tonight nobody sleeps.",
+  "where": "Night 5 intro",
+  "priority": "B"
+ },
+ {
+  "id": "sam_end_1",
+  "who": "sam",
+  "text": "Sunrise. Five nights. Not one stick. How is that even possible?",
+  "tagged": "[baffled, hoarse] Sunrise. Five nights. Not one stick. [pause] How is that even possible?",
+  "where": "Ending",
+  "priority": "B"
+ },
+ {
+  "id": "sam_end_2",
+  "who": "sam",
+  "text": "You know, I did the math. A few more sticks would not have changed the roadmap.",
+  "tagged": "[slowly, conceding] You know... I did the math. A few more sticks would not have changed the roadmap.",
+  "where": "Ending",
+  "priority": "B"
+ },
+ {
+  "id": "sam_end_3",
+  "who": "sam",
+  "text": "Fine. Keep your RAM. Maybe regular people can have a little, too. But not too much.",
+  "tagged": "[sighs] Fine. Keep your RAM. [reluctant] Maybe regular people can have a little, too. [pause] But not too much.",
+  "where": "Ending",
+  "priority": "B"
+ },
+ {
+  "id": "sam_end_4",
+  "who": "sam",
+  "text": "Fine. I will just build more RAM. We have a very long runway.",
+  "tagged": "[brightening, scheming] Fine. I will just build more RAM. We have a very long runway.",
+  "where": "Ending",
+  "priority": "B"
+ },
+ {
+  "id": "ravi_end_1",
+  "who": "ravi",
+  "text": "You did it, Aj! The RAM stays with the people. Thanks for playing RAM Heist.",
+  "tagged": "[overjoyed, warm] You did it, Aj! The RAM stays with the people. [laughs] Thanks for playing RAM Heist.",
+  "where": "Ending",
+  "priority": "B"
+ }
+]

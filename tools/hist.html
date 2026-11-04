@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><title>hist</title><body><script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+const fbx = await new FBXLoader().loadAsync('/assets-src/Aj.fbx'); fbx.updateMatrixWorld(true);
+const m = fbx.getObjectByName('Boy01_Body_Geo'); const g = m.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bones = m.skeleton.bones;
+const dom = (i) => { let b = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; b = si.getComponent(i, k); } } return bones[b].name.replace('mixamorig', ''); };
+const idx = g.index; const tris = idx ? idx.count / 3 : pos.count / 3; const hist = {}; const bb = {};
+const v = new THREE.Vector3();
+for (let t = 0; t < tris; t++) { const a = idx ? idx.getX(t * 3) : t * 3; const n = dom(a); hist[n] = (hist[n] || 0) + 1; v.fromBufferAttribute(pos, a).applyMatrix4(m.matrixWorld); const b = (bb[n] ||= { min: [1e9, 1e9, 1e9], max: [-1e9, -1e9, -1e9] }); ['x', 'y', 'z'].forEach((c, i) => { b.min[i] = Math.min(b.min[i], v[c]); b.max[i] = Math.max(b.max[i], v[c]); }); }
+const out = Object.entries(hist).sort((a, b) => b[1] - a[1]).filter(([n]) => /Hat|Hair|Head|Hood|String|Sleeve|Neck|Spine2/.test(n)).map(([n, c]) => n + ':' + c + ' y[' + bb[n].min[1].toFixed(0) + '..' + bb[n].max[1].toFixed(0) + '] z[' + bb[n].min[2].toFixed(0) + '..' + bb[n].max[2].toFixed(0) + ']');
+window.__h = { indexed: !!idx, tris, out };
+document.title = 'done';
+</script></body>

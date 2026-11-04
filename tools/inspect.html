@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>inspect</title><body><script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+const fbx = await new FBXLoader().loadAsync('/assets-src/Aj.fbx');
+const bones = []; const meshes = [];
+fbx.traverse(o => { if (o.isBone) bones.push(o.name); if (o.isMesh || o.isSkinnedMesh) meshes.push({ n: o.name, skinned: !!o.isSkinnedMesh, mat: [].concat(o.material).map(m => ({ n: m.name, map: !!m.map, img: m.map?.image ? (m.map.image.width + 'x' + m.map.image.height) : null, color: m.color?.getHexString(), type: m.type })) }); });
+fbx.updateMatrixWorld(true);
+const box = new THREE.Box3().setFromObject(fbx), size = box.getSize(new THREE.Vector3());
+const rest = {}; for (const n of ['mixamorig:LeftArm','mixamorig:LeftUpLeg','mixamorig:Hips','mixamorig:Spine','mixamorig:LeftShoulder']) { const b = fbx.getObjectByName(n); if (b) rest[n] = { q: b.quaternion.toArray().map(v=>+v.toFixed(3)), p: b.position.toArray().map(v=>+v.toFixed(2)) }; }
+window.__info = { clips: fbx.animations.map(a => ({ n: a.name, d: a.duration, tracks: a.tracks.length })), boneCount: bones.length, bones: bones.slice(0, 70), meshes, size: size.toArray(), scale: fbx.scale.toArray(), rest };
+document.title = 'done';
+</script></body>
