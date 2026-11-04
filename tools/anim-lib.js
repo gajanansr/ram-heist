@@ -56,7 +56,7 @@ const CLIPS = {
     armL: 36 * s(p), armR: -36 * s(p), elbowL: 22 + 22 * (1 + s(p)) / 2, elbowR: 22 + 22 * (1 - s(p)) / 2, lean: 4, twist: -6 * s(p), hipsTwist: 5 * s(p), hipsDy: 1.7 * c(2 * p) - 0.5, hipsDx: 0.9 * s(p), sway: 1.5 * s(p), spreadL: 5, spreadR: 5, headYaw: 2 * s(p), }; } },
   run: { dur: 0.7, loop: true, f: (t, T) => { const p = TAU * t / T, A = 46; return {
     thighL: -A * s(p) + 6, thighR: A * s(p) + 6, kneeL: 20 + 85 * Math.max(0, -c(p)), kneeR: 20 + 85 * Math.max(0, c(p)),
-    armL: 58 * s(p), armR: -58 * s(p), elbowL: 90 + 16 * s(p), elbowR: 90 - 16 * s(p), lean: 13, twist: -10 * s(p), hipsTwist: 8 * s(p), hipsDy: 3.2 * c(2 * p) - 1.5, hipsDx: 1.2 * s(p), sway: 2 * s(p), spreadL: 14, spreadR: 14, headPitch: -5, }; } },
+    armL: 58 * s(p), armR: -58 * s(p), elbowL: 90 + 16 * s(p), elbowR: 90 - 16 * s(p), lean: 13, twist: -10 * s(p), hipsTwist: 8 * s(p), hipsDy: 3.2 * c(2 * p) - 1.5, hipsDx: 1.2 * s(p), sway: 2 * s(p), spreadL: 2, spreadR: 2, headPitch: -5, }; } },
   crouchIdle: { dur: 3.2, loop: true, f: (t, T) => { const p = TAU * t / T; return { thighL: 50, thighR: 50, kneeL: 98, kneeR: 98, lean: 22 + s(p), armL: 18, armR: 18, elbowL: 30, elbowR: 30, hipsDy: -28, headPitch: -12, spreadL: 8, spreadR: 8, footPitch: 0 }; } },
   crouchWalk: { dur: 1.5, loop: true, f: (t, T) => { const p = TAU * t / T, A = 24; return {
     thighL: 50 - A * s(p), thighR: 50 + A * s(p), kneeL: 98 + 14 * Math.max(0, -c(p)), kneeR: 98 + 14 * Math.max(0, c(p)),
